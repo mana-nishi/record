@@ -1,0 +1,55 @@
+red
+green
+black
+orange
+strawberry
+watermelon, 
+banana
+banana
+pineapple
+lettuce
+pudding
+snack
+hot drink
+bear
+snake
+bird
+America
+Canada
+Brazil
+Japan
+Japanese 
+bus
+truck
+train
+boat
+brother
+pot
+cup
+cap
+hat
+boots
+bell
+bed
+computer
+pool
+store
+star
+dream
+calendar
+play baseball
+play basketball
+play badminton
+how are you today?
+do you have a pen?
+レッド
+オレンジ
+バナナ
+レタス
+豚
+バット
+ブーツ
+ベッド
+ボート
+カナダ
+コンピュータ

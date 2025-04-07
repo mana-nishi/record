@@ -1,0 +1,640 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <title>Text-to-Speech and Recording</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* CSSコード */
+        #text-image {
+            width: 100%; /* 親要素の幅に応じてサイズ変更 */
+            max-width: 300px; /* 最大幅を300pxに設定 */
+            height: auto; /* 高さを自動で調整してアスペクト比を維持 */
+            display: block; /* 画像をブロック要素として表示 */
+            margin: 0 auto; /* 左右中央揃え */
+        }
+        @media (min-width: 768px) {
+            .container {
+                max-width: 400px; 
+            }
+        }
+    
+        @media (min-width: 1024px) {
+            .container {
+                max-width: 600px;
+            }    
+        }
+    
+        
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('/static/images/haikei2.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            overflow-y: scroll;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow-y: scroll;
+        }
+
+        #left-image-overlay {
+            position: fixed; 
+            top: 35%; 
+            left: 10; 
+            transform: translateY(-50%); 
+            width: 25%; 
+            height: 25%;
+            background-image: url('/static/images/haikei_L.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            z-index: 1; 
+            mix-blend-mode: multiply;
+            transform: translateY(-50%) rotate(-30deg);
+        }
+        #right-image-overlay {
+            position: fixed; 
+            top: 37%; 
+            right: 5%; 
+            transform: translateY(-50%); 
+            width: 25%; 
+            height: 25%;
+            background-image: url('/static/images/haikei_L.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            z-index: 1; 
+            mix-blend-mode: multiply;
+            transform: translateY(-50%) rotate(30deg);
+        }
+
+        #waveformCanvas {
+            width: 100%;  /* 横いっぱいにする */
+            height: 300px;
+            position: fixed;  
+            left: 0;  
+            bottom: 0;  
+            background-color: transparent; 
+        }
+
+        #notice {
+            position: fixed;  
+            top: 0;  
+            right: 0;  
+            background-color: rgba(255, 255, 255, 0.5);  
+            padding: 10px;  
+            z-index: 1000;  
+            border: 2px solid black;  
+        }
+
+        input[type="text"] {
+            font-size: 18px;  
+            width: 200px; 
+        }
+
+        h1 {
+            font-size: 36px; 
+            font-family:'Roboto', sans-serif;
+            background: -webkit-linear-gradient(45deg, violet,red, orange, green, yellow,indigo,blue);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        h2 {
+            font-size: 50px;  
+            font-family:'Roboto', sans-serif; 
+        }
+
+        #recording-message{
+            font-size: 24px;
+            font-family: 'Roboto', sans-serif; 
+        }
+
+        #play-button,
+        #next-button {
+            position: relative;
+            right: 20px;
+            bottom: 20px;
+            font-size: 3em; 
+            padding: 20px 40px;
+            background-color: #974d59;
+            border: none;
+            border-radius: 20px;  
+            width: auto;
+        }  
+        .rounded-transparent-button {
+            border-radius: 12px;  
+            opacity: 0.7;  /* 透明度を0.7に設定 */
+        }
+        .button-container{
+            display: flex;
+            gap: 10px;
+        }
+
+        #record-button,
+        #next-button {
+            position: relative;
+            left: 20px;
+            bottom: 20px;
+            font-size: 6em; 
+            padding: 20px 40px;
+            background-color: #eca5dd;
+            border: none;
+            border-radius: 20px;  
+            width: auto;
+        }  
+        .rounded-transparent-button {
+            border-radius: 12px;  
+            opacity: 0.7;  /* 透明度を0.7に設定 */
+        }
+        .button-container{
+            display: flex;
+            gap: 10px;
+        }
+
+      </style>
+</head>
+
+<body>
+  
+     <form action="{{ url_for('new_session') }}" method="get">                                                                  
+      <button type="submit">New Session / Reload</button>                                                                
+    </form> 
+    <button class="rounded-transparent-button"id="finish-button">Finish</button>
+    <div id="left-image-overlay"></div>
+    <div id="right-image-overlay"></div>
+    <h1 style="text-align: center;">Text-to-Speech and Recording</h1>
+    <div id="recording-message" style="display: none; text-align: center;">発声お願いします</div>
+    <div id="play-record-next-container" style="display: none; text-align: center;">
+        <button class="rounded-transparent-button" class="button-container" id="play-button">Play</button>
+        <button class="rounded-transparent-button" class="button-container" id="record-button">Record</button>
+    </div>
+    <div id="image-container" style="text-align: center;">
+        <img id="text-image" src="" alt="Text related image" style="display: none;">
+    </div>
+    <form id="text-form" action="/" method="POST">
+        <input type="text" id="text-input" name="text" placeholder="Enter text" required>
+        <button class="rounded-transparent-button"type="submit" id="add-button">Add</button>
+    </form>
+    <input type="file" id="text-file" name="textfile">
+    <div id="text-container" style="text-align: center;">
+        {% for text in texts %}
+            <h2>{{ text }}</h2>
+        {% endfor %}
+    </div>
+    <canvas id="waveformCanvas" ></canvas>
+      
+    <script>
+        $(document).ready(function() {
+            var currentIndex = 0;
+            var texts = [];
+            var audio = new Audio();
+            var recording = false;
+            var chunks = [];  // 録音データのチャンクを保持する配列
+            var mediaRecorder;  // メディアレコーダーオブジェクトを保持する変数
+            var audioContext;
+            var analyser;
+            var source;
+            var bufferLength;
+            var sampleArray;
+            var spectrArray;
+            var sum;
+            var volume;
+            var canvas = document.getElementById("waveformCanvas");
+            var canvasCtx = canvas.getContext("2d");
+            var silenceStartTime = null;
+            var volumeTime = null;
+            var recordStartTime = null;
+            var silenceDetectionInterval = null;
+            const TARGET_SAMPLE_RATE = 16000;
+            const DEFALUT_SAMPLE_RATE = 44100;
+            const CANVAS_RENEW_RATIO = 0.01;
+            const sampleRateRatio = DEFALUT_SAMPLE_RATE / TARGET_SAMPLE_RATE;
+            const SILENCE_DURATION =1000;  // 音量が閾値以下で1秒間持続した場合に録音を停止する
+            const SILENCE_THRESHOLD = 120;  // この値は調整が必要です。小さくすると音が小さいと認識しやすくなります。
+            const VOLUME_THRESHOLD = 150;  // この値は調整が必要です．
+            let activeStream;
+            let switch_button = false;
+            let isRecording = false;
+
+            var sessionFolderName = "{{ session.get('folder_name') }}";
+
+            function visualize(stream) {
+                if (!audioContext) {
+                    audioContext = new AudioContext();
+                    analyser = audioContext.createAnalyser(); // AnalyserNode の初期化を行う
+                    analyser.fftSize = 2048;
+                    bufferLength = analyser.frequencyBinCount;
+                    sampleArray = new Uint8Array(bufferLength*2);
+                    spectrArray = new Uint8Array(bufferLength);
+                    source = audioContext.createMediaStreamSource(stream);
+                    source.connect(analyser);
+                }
+
+                var canvas = document.getElementById("waveformCanvas");
+                var canvasCtx = canvas.getContext("2d");
+                /* var sliceWidth = canvas.width * 1.0 / BufferLength; */
+                var sliceWidth = canvas.width * CANVAS_RENEW_RATIO;
+
+                // バッファ用のCanvasとそのコンテキストを作成
+                var bufferCanvas = document.createElement("canvas");
+                bufferCanvas.width = canvas.width;
+                bufferCanvas.height = canvas.height;
+                var bufferCtx = bufferCanvas.getContext("2d");  
+
+                //オフスクリーンキャンバスに描画処理を行う関数
+                function drawToBuffer() {
+
+		            // 今回の波形データを取得
+                    analyser.getByteTimeDomainData(sampleArray);
+                    // 一つ前の波形データを左にシフト
+                    bufferCtx.drawImage(bufferCanvas, -sliceWidth, 0);
+                    // 右端に新しい波形データを描画
+                    bufferCtx.clearRect(bufferCanvas.width - sliceWidth, 0, sliceWidth, bufferCanvas.height);
+                    bufferCtx.fillStyle = 'rgba(173, 216, 230, 0.5)';
+                    bufferCtx.fillRect(bufferCanvas.width - sliceWidth, 0, sliceWidth, bufferCanvas.height);
+                    bufferCtx.lineWidth = 2;
+                    bufferCtx.strokeStyle = 'rgb(70, 130, 180)';
+                    bufferCtx.beginPath();
+            
+                    for (let i = 0; i < bufferLength; i=i+5) {
+                        let v = sampleArray[i] / 128.0;
+                        let y = v * bufferCanvas.height / 2;
+                        let x = bufferCanvas.width - sliceWidth + i * (sliceWidth / bufferLength);
+            
+                        if (i === 0) {
+                            bufferCtx.moveTo(x, y);
+                        } else {
+                            bufferCtx.lineTo(x, y);
+                        }
+                    }
+
+                    bufferCtx.moveTo(bufferCanvas.width - sliceWidth, bufferCanvas.height / 2);
+                    bufferCtx.lineTo(bufferCanvas.width, bufferCanvas.height / 2);
+
+                    bufferCtx.stroke();
+
+                    bufferCtx.setLineDash([5,5]);
+                    bufferCtx.moveTo(bufferCanvas.width - sliceWidth, bufferCanvas.height * 3 / 5);
+                    bufferCtx.lineTo(bufferCanvas.width, bufferCanvas.height * 3 / 5);
+
+                    bufferCtx.moveTo(bufferCanvas.width - sliceWidth, bufferCanvas.height * 2 / 5);
+                    bufferCtx.lineTo(bufferCanvas.width, bufferCanvas.height * 2 / 5);
+
+                    bufferCtx.stroke();
+
+                    requestAnimationFrame(drawToBuffer);
+                }
+
+                //キャンバスに描画処理を行う関数
+                function draw(){
+
+                    canvasCtx.clearRect(canvas.width - sliceWidth, 0, sliceWidth, canvas.height);
+                    canvasCtx.drawImage(bufferCanvas, -sliceWidth, 0);
+
+                    requestAnimationFrame(draw);
+                }
+
+                // 描画を開始
+                drawToBuffer();
+                draw();
+            }
+            
+            function updateVolume(spectrArray) {
+                //周波数データの取得
+                analyser.getByteFrequencyData(spectrArray); 
+                    
+                //最大音量の計算
+                volume = Math.max(...spectrArray);
+                
+                return volume;
+            }
+
+            function showText(index) {
+                $('#text-container h2').hide();
+                $('#text-container h2:eq(' + index + ')').show();
+                // 画像を表示する
+                var text = texts[index];
+                var imageUrl = "/static/images/" + encodeURIComponent(text) + ".jpg";
+                $('#text-image').attr('src', imageUrl).show(); 
+                $('#recording-message').hide();
+                $('#waveformCanvas').hide();
+                $('#play-button').show(); // playボタンを再表示する
+                $('#record-button').show(); //recordボタンを再表示する
+
+                audio.pause();
+                audio.currentTime = 0;
+            }
+            
+            $('#play-button').click(function() {
+            switch_button = true;
+            var index = currentIndex;
+            var text = texts[index];
+            var sanitizedText = text.replace(/\s+/g, '_').toLowerCase();
+            var filename = sanitizedText + ".mp3";
+            var audio_url = "/static/sounds/" + filename;
+            audio.src = audio_url; // 既存の audio オブジェクトを再利用
+            audio.addEventListener("ended", handleAudioEnded);
+            audio.play();  
+            });
+
+            $('#record-button').click(function() {
+                switch_button = false;  // レコードボタンが押された場合にフラグをリセット
+                var index = currentIndex;
+                var text = texts[index];
+                var sanitizedText = text.replace(/\s+/g, '_').toLowerCase();
+                
+                // 既存のイベントリスナーを削除してから追加
+                audio.removeEventListener("ended", handleAudioEnded);
+                
+                // 直接録音を開始
+                startRecording();
+                $('#play-button').hide();
+                $('#record-button').hide();
+                $('#recording-message').show();
+
+            });
+
+            function startRecording() {
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(function(stream) {
+                        // メディアレコーダーのインスタンスを作成します
+                        mediaRecorder = new MediaRecorder(stream);
+                        activeStream = stream; // グローバル変数にストリームを保存
+                        chunks = []; // 録音データのチャンクをリセット
+                        
+                        // 録音が開始されたときのイベント
+                        mediaRecorder.onstart = function() {
+                            console.log('録音開始');
+                            silenceDetectionInterval = setInterval(() => {
+                                updateVolume(spectrArray);
+                                checkVolume1(volume);
+                                console.log(volume);
+                            }, 150); // 150msごとに音量をチェック   
+                        };
+                
+                        // 録音が停止されたときのイベント
+                        mediaRecorder.onstop = function() {
+                            console.log('録音停止');
+                            // ストリームのトラックを停止
+                            if (activeStream) {
+                                activeStream.getTracks().forEach(track => track.stop());
+                            }
+                            if (chunks.length > 0) {
+                                sendRecording(new Blob(chunks, { 'type': 'audio/wav' }));
+                            } else {
+                                console.error('No recording data available');
+                            }
+                            chunks = []; // 録音データのチャンクをリセット
+                        };
+                
+                        // データが利用可能になったときのイベント
+                        mediaRecorder.ondataavailable = function(event) {
+                            if (event.data.size > 0) {
+                                chunks.push(event.data);
+                            }
+                        };
+                
+                        // 録音を開始
+                        mediaRecorder.start();
+                        recording = true;
+                        recordStartTime = Date.now();
+                        visualize(stream);
+                        $('#recording-message').show();
+                    })
+                    .catch(function(error) {
+                        console.error('マイクにアクセス中のエラー:', error);
+                    });
+            
+                $('#waveformCanvas').show();
+            }
+
+            function checkVolume1(volume) {
+                if (volume > VOLUME_THRESHOLD){
+                    volumeTime = Date.now();
+                    silenceStartTime = null;
+                }
+                else if (volume <= SILENCE_THRESHOLD && volumeTime > 0)
+                    checkVolume2();
+                else if (Date.now()-recordStartTime >= 10000){
+                    stopRecording();
+                    currentIndex++;
+                    if (currentIndex < texts.length) {
+                        showText(currentIndex);
+                    } else {
+                         // Finish the recording process or do something else
+                        $('#play-record-next-container').hide();
+                        $('#text-container h2:last-child').hide();
+                        $('#text-image').hide();
+                        $('#text-container').append('<h2>Finish</h2>');
+                        return;
+                    }
+                }
+                else silenceStartTime = null;
+            }
+
+            function checkVolume2() {
+                if (silenceStartTime === null) 
+                    silenceStartTime = Date.now();
+                else if (Date.now() - silenceStartTime >= 450) {
+                        stopRecording();
+                        currentIndex++;
+                        if (currentIndex < texts.length) {
+                            showText(currentIndex);
+                        } else {
+                            // Finish the recording process or do something else
+                            $('#play-record-next-container').hide();
+                            $('#text-container h2:last-child').hide();
+                            $('#text-image').hide();
+                            $('#text-container').append('<h2>Finish</h2>');
+                            return;
+                        }
+                    }
+            }
+
+            function stopRecording() {
+                if (!isRecording || !mediaRecorder) return;
+                
+                clearInterval(silenceDetectionInterval);
+                silenceDetectionInterval = null;
+                silenceStartTime = null;
+                volumeTime = null;
+                
+                try {
+                    mediaRecorder.stop();
+                    isRecording = false;
+                    
+                    // ストリームのトラックを停止
+                    if (activeStream) {
+                        activeStream.getTracks().forEach(track => track.stop());
+                    }
+                } catch (error) {
+                    console.error('録音停止エラー:', error);
+                }
+            }
+
+            function sendRecording(blob) {
+                // formDataとAJAXを使用して録音をサーバーに送信する
+                let formData = new FormData();
+                formData.append('audio_data', blob);
+
+                // プレイ再生かどうかのフラグを追加
+                formData.append('is_replay', switch_button);  // フラグの値を送信
+            
+                // 非同期通信を行う
+                fetch('/record', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.text();
+                    } else {
+                        throw new Error('Server error');
+                    }
+                })
+                .then(result => {
+                    console.log(result);
+                })
+                .catch(error => {
+                    console.error('Error sending recording:', error);
+                });
+            }
+
+            function sendRecordingsToServer() {
+                var formData = new FormData();
+                formData.append("folder_name", session.folder_name); // フォルダー名を追加
+            
+                for (var i = 0; i < chunks.length; i++) {
+                    formData.append("recordings[]", chunks[i]); // チャンクを追加
+                }
+            
+                // サーバーに送信
+                fetch('/upload_recordings', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.text();
+                    } else {
+                        throw new Error('Server error');
+                    }
+                })
+                .then(result => {
+                    console.log(result);
+                })
+                .catch(error => {
+                    console.error('Error sending recordings:', error);
+                });
+            }
+
+            
+
+            $('#waveformCanvas').show();
+
+            // ソフトウェアの起動時にstatic/texts/texts.txtからテキストを読み込む
+            $.ajax({
+                url: 'static/texts/texts.txt',
+                dataType: 'text',
+                success: function(data) {
+                    var lines = data.split('\n');
+                    for (var i = 0; i < lines.length; i++) {
+                        var line = lines[i].trim();
+                        if (line) {
+                            texts.push(line);
+                            $('#text-container').append('<h2>' + line + '</h2>');
+                        }
+                    }
+                    // ファイルからテキストを読み込んだ後にfont-sizeを24pxに設定
+                    $('h2').css('font-size', '24px');
+                },
+                error: function(xhr, status, error) {
+                    console.error("An error occurred reading the file:", error);
+                }
+            });
+
+            canvas.width = window.innerWidth;
+            window.addEventListener('resize', function() {
+            canvas.width = window.innerWidth;
+            });
+
+            // リストに追加するときに文字サイズを小さくする
+            $('#add-button').click(function() {
+            $('h2').css('font-size', '24px');
+            });
+            $("text-form").click(function() {
+            $('h2').css('font-size', '24px');
+            });
+             // Playボタンなどが出るタイミングで文字を大きくする
+            $('#finish-button').click(function() {
+            $('h2').css('font-size', '60px'); 
+            });
+  
+            $('#finish-button').click(function() {
+                $('#text-input').hide();
+                $('#add-button').hide();
+                $('#text-file').hide();
+                $(this).hide();
+                showText(currentIndex);
+                $('#play-record-next-container').show();
+            });
+
+            $('#text-file').change(function(event) {
+            var fileInput = event.target;
+            var file = fileInput.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    var text = evt.target.result;
+                    var lines = text.split('\n');
+                    for (var i = 0; i < lines.length; i++) {
+                        var line = lines[i].trim();
+                        if (line) {
+                            texts.push(line);
+                            $('#text-container').append('<h2>' + line + '</h2>');
+                        }
+                    }
+                    // ファイルからテキストを読み込んだ後にfont-sizeを24pxに設定
+                    $('h2').css('font-size', '24px');
+                };
+                reader.onerror = function(evt) {
+                    console.error("An error occurred reading the file:", evt);
+                };
+                reader.readAsText(file, "UTF-8");
+            }
+
+            // ファイル選択をリセット
+            $(fileInput).val('');
+        });
+        // テキストが入力された場合の処理はこれでOK
+        $('#text-form').submit(function(event) {
+         event.preventDefault();
+        var text = $('#text-input').val();
+         if (text) {
+               texts.push(text);
+              $('#text-container').append('<h2>' + text + '</h2>');
+              $('#text-input').val('');
+            }
+        });
+
+
+
+        });
+    </script>
+</body>
+</html>

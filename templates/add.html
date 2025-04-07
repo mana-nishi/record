@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Text-to-Speech</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Text-to-Speech</h1>
+    <div id="text-container">
+        {% for text in texts %}
+            <h2>{{ text }}</h2>
+        {% endfor %}
+    </div>
+    <button id="finish-button">Finish</button>
+    <script>
+        $(document).ready(function() {
+            $('#finish-button').click(function() {
+                var index = 0;
+                showText(index);
+            });
+
+//            $(document).on('click', '.play-button', function() {
+  //              var index = $(this).data('index');
+    //            $.post('/play', {index: index});
+      //      });
+
+            $(document).on('click', '.next-button', function() {
+                var index = $(this).data('index');
+                showText(index);
+            });
+
+            function showText(index) {
+                $('#text-container').html('<h2>' + (index + 1) + '. ' + texts[index] + '</h2><button class="play-button" data-index="' + index + '">Play</button><button class="next-button" data-index="' + index + '">Next</button>');
+            }
+        });
+    </script>
+</body>
+</html>
+
+
